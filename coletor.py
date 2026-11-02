@@ -4,7 +4,7 @@ Fontes: Google Notícias (uma busca por cidade), feeds de prefeituras e câmaras
 API SAPL das câmaras (normas jurídicas) e feeds regionais.
 Uso: python coletor.py [--dias 30]   (precisa de: pip install defusedxml)
 """
-import argparse, hashlib, html, json, re, sys, time, unicodedata, urllib.parse, urllib.request
+import argparse, hashlib, html, json, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from defusedxml import ElementTree as ET  # feeds são de terceiros: pip install defusedxml
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -326,11 +326,30 @@ def sem_paginas_fixas(itens):
     return [i for i in itens if i["k"] not in PROPRIOS or len(origens[norm(i["t"])]) < 3]
 
 
-def carregar_antigos():
+def carregar_anterior():
+    """Itens (por id) e saúde das fontes gravados na coleta anterior."""
     if not SAIDA.exists():
-        return {}
+        return {}, {}
     txt = SAIDA.read_text(encoding="utf-8")
-    return {i["id"]: i for i in json.loads(txt[txt.index("{"): txt.rindex("}") + 1])["itens"]}
+    d = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
+    return {i["id"]: i for i in d["itens"]}, d.get("saude", {})
+
+
+def atualizar_saude(antiga, resultados, resgate, agora, onde):
+    """Por fonte: quando funcionou pela última vez (e onde: PC ou nuvem), último erro e a notícia mais nova já vista.
+    Fonte sem feed salva pelo Google/sitemap (resgate) conta como funcionando."""
+    nova = {}
+    for r, its, erro in resultados:
+        s = dict(antiga.get(r, {}))
+        its = its + resgate.get(r, [])
+        if erro is None or its:
+            s.update(ok=agora, onde=onde, itens=len(its), erro=None)
+        else:
+            s.update(falha=agora, erro=erro)
+        datas = [i["d"] for i in its if i.get("d")] + ([s["recente"]] if s.get("recente") else [])
+        s["recente"] = max(datas) if datas else None
+        nova[r] = s
+    return nova
 
 
 def main():
@@ -362,7 +381,7 @@ def main():
         resultados = [f.result() for f in fut]
 
     # sites próprios sem feed: Google site: e, se o Google trouxe pouco (<20), também o sitemap
-    antigos = carregar_antigos()
+    antigos, saude = carregar_anterior()
     conhecidos = {i["u"] for i in antigos.values() if i["k"] in PROPRIOS}
     sem_feed = [(r, *proprios[r]) for r, _, e in resultados if e and r in proprios]
     with ThreadPoolExecutor(3) as pg, ThreadPoolExecutor(8) as pf:
@@ -372,7 +391,10 @@ def main():
                      for r, h, k, m in sem_feed if len(pelo_google[r][1]) < 20}
         pelo_mapa = {r: f.result() for r, f in pelo_mapa.items()}
     extras = [x for d in (pelo_google, pelo_mapa) for x in d.values()]
-    resgatadas = {r for r in pelo_google if pelo_google[r][1] or (r in pelo_mapa and pelo_mapa[r][1])}
+    resgate = {r: pelo_google[r][1] + pelo_mapa.get(r, (None, [], None))[1] for r in pelo_google}
+    resgatadas = {r for r, its in resgate.items() if its}
+    agora = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    saude = atualizar_saude(saude, resultados, resgate, agora, "nuvem" if os.environ.get("GITHUB_ACTIONS") else "PC")
 
     novos = [i for _, itens, _ in resultados + extras for i in itens]
     # veículos que repetem nomes de cidades em toda página: só vale a cidade citada no título/resumo
@@ -387,7 +409,7 @@ def main():
         i["e"] = i["k"] == "imprensa" and bool(ELEICAO.search(norm(i["t"])))
         i["lg"] = legislativo(i)
     falhas = [{"fonte": r, "erro": e} for r, _, e in resultados if e and r not in resgatadas]
-    dados = {"gerado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    dados = {"gerado": agora, "saude": saude,
              "municipios": sorted(muns) + [REGIAO],
              "fontes": {"total": len(resultados), "com_itens": sum(1 for _, i, _ in resultados if i) + len(resgatadas), "falhas": falhas},
              "itens": itens}

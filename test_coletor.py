@@ -86,4 +86,12 @@ assert p["t"] == "Projeto de Lei Nº 024-2026: FIXA A DESPESA" and p["d"] == "20
 assert p["r"] == "Situação: Aprovada · Autor: Poder Executivo" and p["u"] == "https://h/legislativo/proposicao/abc"
 assert L("Projeto de Lei Nº 1: X", "proposicao") == "projeto" and L("Projeto de Lei Nº 1: X", "proposicao", a=True) == "aprovado"
 assert L("Projeto de Lei nº 3/2026: Y", "lei") == "projeto" and L("Portaria nº 3: Z", "lei") == "norma"
+# saúde das fontes: guarda o último sucesso mesmo quando a coleta seguinte falha (ex.: nuvem bloqueada)
+it1 = {"d": "2026-10-01T00:00:00Z"}
+s1 = c.atualizar_saude({}, [("A", [it1], None), ("B", [], "HTTPError"), ("C", [], "sem feed")], {"C": [it1]}, "T1", "PC")
+assert s1["A"] == {"ok": "T1", "onde": "PC", "itens": 1, "erro": None, "recente": "2026-10-01T00:00:00Z"}
+assert s1["B"]["erro"] == "HTTPError" and "ok" not in s1["B"] and s1["C"]["ok"] == "T1"
+s2 = c.atualizar_saude(s1, [("A", [], "HTTPError")], {}, "T2", "nuvem")
+assert s2["A"]["ok"] == "T1" and s2["A"]["onde"] == "PC" and s2["A"]["falha"] == "T2" and s2["A"]["recente"] == "2026-10-01T00:00:00Z"
+assert "B" not in s2  # fonte que saiu da lista sai da saúde
 print("ok")

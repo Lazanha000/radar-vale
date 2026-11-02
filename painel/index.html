@@ -16,7 +16,15 @@ h2{font-size:1rem;margin:4px 0 8px}
 .abas{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:12px}
 .abas button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 14px;color:var(--mut);font-weight:600}
 .abas button[aria-selected=true]{color:var(--tx);border-bottom-color:var(--ac)}
-body[data-aba=camaras] .so-noticias,body[data-aba=noticias] .so-camaras{display:none}
+body[data-aba=camaras] .so-noticias,body[data-aba=noticias] .so-camaras,body:not([data-aba=fontes]) .so-fontes,
+body[data-aba=fontes] .so-noticias,body[data-aba=fontes] .so-camaras,body[data-aba=fontes] .nao-fontes{display:none}
+.resumo-fontes{margin:0 0 12px;color:var(--mut)}
+details.grupo{margin-bottom:12px}
+details.grupo summary{cursor:pointer;font-weight:600;padding:8px 0;min-height:44px}
+.fonte{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:.9rem}
+.fonte b{display:block}
+.fonte span{color:var(--mut)}
+.erro{color:var(--ac)}
 .filtros{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .filtros input[type=search]{grid-column:1/-1}
 input,select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit}
@@ -49,8 +57,9 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 <nav class="abas" role="tablist">
   <button role="tab" id="aba-noticias" aria-selected="true">Notícias</button>
   <button role="tab" id="aba-camaras" aria-selected="false">Câmaras</button>
+  <button role="tab" id="aba-fontes" aria-selected="false">Fontes</button>
 </nav>
-<div class="filtros">
+<div class="filtros nao-fontes">
   <input type="search" id="q" placeholder="Buscar (ex.: escola, saúde, concurso)">
   <select id="mun"><option value="">Todas as cidades</option></select>
   <select id="tipo" class="so-noticias">
@@ -73,9 +82,10 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
   <h2>Aprovações por cidade</h2>
   <ol id="ranking"></ol>
 </section>
-<p class="n" id="n"></p>
-<div id="lista"></div>
-<button id="mais" hidden>Mostrar mais</button>
+<p class="n nao-fontes" id="n"></p>
+<div id="lista" class="nao-fontes"></div>
+<button id="mais" class="nao-fontes" hidden>Mostrar mais</button>
+<section class="so-fontes" id="fontes"></section>
 <footer id="rodape"></footer>
 </main>
 <script src="noticias.js"></script>
@@ -182,23 +192,62 @@ function desenhar() {
   $('mais').hidden = achados.length <= mostrando;
 }
 
+const ABAS = ['noticias', 'camaras', 'fontes'];
+
 function mudarAba(nova) {
   aba = nova;
   document.body.dataset.aba = nova;
-  $('aba-noticias').setAttribute('aria-selected', String(nova === 'noticias'));
-  $('aba-camaras').setAttribute('aria-selected', String(nova === 'camaras'));
-  history.replaceState(null, '', nova === 'camaras' ? '#camaras' : '#');
-  filtrar();
+  ABAS.forEach(a => $('aba-' + a).setAttribute('aria-selected', String(a === nova)));
+  history.replaceState(null, '', nova === 'noticias' ? '#' : '#' + nova);
+  if (nova === 'fontes') desenharFontes(); else filtrar();
+}
+
+const ha = d => {
+  const h = (Date.now() - Date.parse(d)) / 36e5;
+  return h < 1 ? 'há menos de 1 hora' : h < 48 ? `há ${Math.round(h)} h` : `há ${Math.round(h / 24)} dias`;
+};
+
+// falha: nada funcionou nas últimas 36 h (nem no PC nem na nuvem); parada: funciona, mas a notícia mais nova tem 90+ dias
+function estadoFonte(s) {
+  if (!s.ok || Date.now() - Date.parse(s.ok) > 36 * 36e5) return 'falha';
+  return s.recente && Date.now() - Date.parse(s.recente) > 90 * 864e5 ? 'parada' : 'ok';
+}
+
+function desenharFontes() {
+  const grupos = {falha: [], parada: [], ok: []};
+  for (const [nome, s] of Object.entries(R.saude || {}).sort()) grupos[estadoFonte(s)].push([nome, s]);
+  const TITULO = {falha: 'Com falha', parada: 'Sem notícia nova há 90+ dias', ok: 'Funcionando'};
+  const resumo = document.createElement('p');
+  resumo.className = 'resumo-fontes';
+  resumo.textContent = `${grupos.ok.length} funcionando · ${grupos.parada.length} paradas · ${grupos.falha.length} com falha`;
+  const secoes = Object.keys(grupos).map(g => {
+    const d = document.createElement('details'), sm = document.createElement('summary');
+    d.className = 'grupo';
+    d.open = g !== 'ok';
+    sm.textContent = `${TITULO[g]} (${grupos[g].length})`;
+    d.append(sm, ...grupos[g].map(([nome, s]) => {
+      const div = document.createElement('div'), b = document.createElement('b'), info = document.createElement('span');
+      div.className = 'fonte';
+      b.textContent = nome;
+      info.textContent = [s.ok ? `funcionou ${ha(s.ok)} (${s.onde}), ${s.itens} itens` : 'nunca funcionou',
+        s.recente ? `notícia mais nova ${ha(s.recente)}` : 'nenhuma notícia do Vale'].join(' · ');
+      div.append(b, info);
+      if (s.erro) { const e = document.createElement('span'); e.className = 'erro'; e.textContent = ` · erro: ${s.erro}`; div.append(e); }
+      return div;
+    }));
+    return d;
+  });
+  $('fontes').replaceChildren(resumo, ...secoes);
 }
 
 $('aba-noticias').onclick = () => mudarAba('noticias');
 $('aba-camaras').onclick = () => mudarAba('camaras');
+$('aba-fontes').onclick = () => mudarAba('fontes');
 $('mais').onclick = () => { mostrando += 100; desenhar(); };
 ['q', 'mun', 'tipo', 'per', 'ap', 'el'].forEach(id => $(id).addEventListener('input', filtrar));
 const f = R.fontes;
-$('rodape').textContent = `Fontes com resultado: ${f.com_itens} de ${f.total}. Sem feed ou com erro: ` +
-  (f.falhas.map(x => x.fonte.replace(/^(Prefeitura|Câmara) de /, '$1 ')).join('; ') || 'nenhuma') + '.';
-mudarAba(location.hash === '#camaras' ? 'camaras' : 'noticias');
+$('rodape').textContent = `Fontes com resultado nesta coleta: ${f.com_itens} de ${f.total}. Detalhes na aba Fontes.`;
+mudarAba(ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'noticias');
 </script>
 </body>
 </html>
