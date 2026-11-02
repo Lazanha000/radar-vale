@@ -15,7 +15,7 @@ AQUI = Path(__file__).parent
 SAIDA = AQUI / "painel" / "noticias.js"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
 REGIAO = "Vale do Jequitinhonha"
-PROPRIOS = {"prefeitura", "camara", "lei"}  # id pelo link: títulos genéricos se repetem entre cidades
+PROPRIOS = {"prefeitura", "camara", "lei", "proposicao"}  # id pelo link: títulos genéricos se repetem entre cidades
 # nomes que também são palavra, sobrenome ou lugar de outro estado: só valem com contexto de MG
 AMBIGUOS = {"Datas", "Jacinto", "Bandeira", "Gouveia", "Rubim", "Medina", "Mata Verde", "Berilo", "Turmalina",
             "Carbonita", "Jordânia", "Aricanduva", "Presidente Kubitschek", "Pedra Azul", "Itinga", "Caraí"}
@@ -31,7 +31,7 @@ SESSAO = re.compile(r"reuniao (ordinaria|extraordinaria|extra ordinaria|solene|e
                     r"|\bpauta\b|\bata\b|tribuna livre|mesa diretora|\bposse\b|comissao")
 SOBRE_CAMARA = re.compile(r"camara (municipal|de vereadores)|vereador")
 APROV = re.compile(r"aprov|sancion|promulg")
-NORMA_APROVADA = re.compile(r"(lei|decreto legislativo|resolucao|emenda)( |$)")  # portaria e decreto do executivo não são aprovação
+NORMA_APROVADA = re.compile(r"(lei|decreto legislativo|resolucao|emenda|proposicao de lei|ato de promulgacao)( |$)")  # portaria e decreto do executivo não são aprovação
 # "Vale do Jequitinhonha" e "rio Jequitinhonha" não são a cidade; "Chapada Diamantina" é na Bahia
 EXCETO = {"jequitinhonha": r"(?<!vale do )(?<!rio )(?<!alto )(?<!medio )(?<!baixo )(?<!bacia do )(?<!regiao do )",
           "diamantina": r"(?<!chapada )"}
@@ -132,7 +132,7 @@ def monta(bruto, fonte, kind, pads, mun=None, confiavel=False, regiao=False, apr
     if not ms or not titulo or not bruto["u"].startswith("http"):
         return None
     return {"t": titulo, "u": bruto["u"], "d": bruto["d"], "r": r[:300], "f": bruto["f"] or fonte,
-            "k": kind, "o": mun or "", "m": ms, "a": aprov if kind == "lei" else bool(APROV.search(norm(titulo)))}
+            "k": kind, "o": mun or "", "m": ms, "a": aprov if kind in ("lei", "proposicao") else bool(APROV.search(norm(titulo)))}
 
 
 def tarefa_feed(rotulo, urls, kind, pads, mun=None, confiavel=False, regiao=False):
@@ -177,6 +177,57 @@ def tarefa_sapl(mun, host, pads):
         if i:
             itens.append(i)
     return f"SAPL: {mun}", itens, None
+
+
+def ler_leis(dados, host):
+    """JSON de /legislacoes/get/todas (modelo de site usado por 18 câmaras) -> itens brutos com aprovação."""
+    out = []
+    for r in dados["data"]:
+        tipo = limpa(r.get("titulo"))
+        criado = (r.get("arquivo") or {}).get("created_at")
+        out.append(({"t": f"{tipo} nº {r.get('identificacao')}: {limpa(r.get('ementa'))}", "u": f"https://{host}/legislacoes/{r['id']}",
+                     "d": data_iso(criado) or data_iso(f"{r.get('ano')}-01-01"), "r": "", "f": ""},
+                    bool(NORMA_APROVADA.match(norm(tipo)))))
+    return out
+
+
+SITUACAO_APROVADA = {"aprovada", "aprovado", "sancionada", "promulgada"}
+PR_CAMPOS = {"tipo": r'pr-item-tipo">([^<]+)<', "num": r'pr-item-num"[^>]*>([^<]+)<', "link": r'pr-item-num" href="([^"]+)"',
+             "ementa": r'pr-item-ementa"><a[^>]*>(.*?)</a>', "autor": r'pr-item-autor">(.*?)</span>', "sit": r'lg-badge[^"]*">([^<]+)<'}
+
+
+def ler_proposicoes(pagina):
+    """Página /legislativo/proposicoes (modelo de Almenara, Mata Verde e Rio do Prado) -> itens brutos com situação."""
+    out = []
+    for art in re.findall(r'<article class="pr-item">(.*?)</article>', pagina, re.S):
+        c = {k: limpa((re.search(rx, art, re.S) or [None, ""])[1]) for k, rx in PR_CAMPOS.items()}
+        dt = re.search(r"Protocolo em (\d\d)/(\d\d)/(\d{4})", art)
+        out.append(({"t": f"{c['tipo']} {c['num']}: {c['ementa']}", "u": c["link"],
+                     "d": f"{dt[3]}-{dt[2]}-{dt[1]}T12:00:00Z" if dt else None,
+                     "r": f"Situação: {c['sit']} · Autor: {c['autor']}", "f": ""},
+                    norm(c["sit"]) in SITUACAO_APROVADA))
+    return out
+
+
+def tarefa_leis(mun, host, pads):
+    try:
+        brutos = ler_leis(json.loads(baixar(f"https://{host}/legislacoes/get/todas?draw=1&start=0&length=40")), host)
+    except Exception as e:
+        return f"Leis: {mun}", [], type(e).__name__
+    itens = [monta(b, f"Câmara de {mun}", "lei", pads, mun, confiavel=True, aprov=a) for b, a in brutos]
+    return f"Leis: {mun}", [i for i in itens if i], None
+
+
+def tarefa_proposicoes(mun, host, pads):
+    brutos, erro = {}, None
+    for filtro in ("", "?status=aprovada"):  # as mais recentes e, à parte, as aprovadas
+        try:
+            for b, a in ler_proposicoes(baixar(f"https://{host}/legislativo/proposicoes{filtro}").decode("utf-8", "ignore")):
+                brutos[b["u"]] = (b, a)
+        except Exception as e:
+            erro = type(e).__name__
+    itens = [monta(b, f"Câmara de {mun}", "proposicao", pads, mun, confiavel=True, aprov=a) for b, a in brutos.values()]
+    return f"Proposições: {mun}", [i for i in itens if i], None if brutos else erro or "sem proposições"
 
 
 def tarefa_site(rotulo, host, kind, mun, pads):
@@ -236,8 +287,8 @@ def legislativo(i):
         return None  # da prefeitura só entra "prefeito sanciona lei"
     if i["a"]:
         return "aprovado"
-    if i["k"] == "lei":
-        return "norma"
+    if i["k"] in ("lei", "proposicao"):
+        return "projeto" if i["k"] == "proposicao" or t.startswith("projeto") else "norma"
     return "projeto" if PROJETO.search(t) else "sessao" if SESSAO.search(t) else "outro"
 
 
@@ -258,7 +309,8 @@ def juntar(itens):
             out[it["id"]] = it
             continue
         v["m"] = sorted(set(v["m"]) | set(it["m"]))
-        v["d"], v["r"], v["a"] = min(v["d"], it["d"]), v["r"] or it["r"], v["a"] or it["a"]
+        # resumo mais novo vale: nas proposições ele traz a situação, que muda ("Em tramitação" -> "Aprovada")
+        v["d"], v["r"], v["a"] = min(v["d"], it["d"]), it["r"] or v["r"], v["a"] or it["a"]
         if "news.google." in v["u"] and "news.google." not in it["u"]:
             v["u"], v["f"] = it["u"], it["f"]
     return out
@@ -304,6 +356,8 @@ def main():
         fut = [pg.submit(tarefa_google, q, m, pads) for q, m in google]
         fut += [pf.submit(tarefa_feed, r, u, k, pads, m, c, g) for r, u, k, m, c, g in feeds]
         fut += [pf.submit(tarefa_sapl, m, h, pads) for m, h in fontes["sapl"].items()]
+        fut += [pf.submit(tarefa_leis, m, h, pads) for m, h in fontes["leis_json"].items()]
+        fut += [pf.submit(tarefa_proposicoes, m, h, pads) for m, h in fontes["proposicoes_html"].items()]
         fut += [pg.submit(tarefa_veiculo, v["nome"], v["site"], dias, pads) for v in fontes["veiculos_site"]]
         resultados = [f.result() for f in fut]
 

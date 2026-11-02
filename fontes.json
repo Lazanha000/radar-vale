@@ -147,5 +147,30 @@
  "so_com_cidade_no_texto": [
   "csastudiowebradio.com.br",
   "CSA Studio Web Rádio (Capelinha)"
- ]
+ ],
+ "leis_json": {
+  "Angelândia": "www.camaraangelandia.mg.gov.br",
+  "Bandeira": "www.camarabandeira.mg.gov.br",
+  "Caraí": "carai.cam.mg.gov.br",
+  "Chapada do Norte": "www.camarachapadadonorte.mg.gov.br",
+  "Francisco Badaró": "www.camarafranciscobadaro.mg.gov.br",
+  "Itaobim": "www.camaraitaobim.mg.gov.br",
+  "Jenipapo de Minas": "www.camarajenipapodeminas.mg.gov.br",
+  "Jequitinhonha": "www.camarajequitinhonha.mg.gov.br",
+  "José Gonçalves de Minas": "www.camarajosegoncalvesdeminas.mg.gov.br",
+  "Leme do Prado": "www.camaralemedoprado.mg.gov.br",
+  "Monte Formoso": "cmmonteformoso.mg.gov.br",
+  "Novo Cruzeiro": "www.camaranovocruzeiro.mg.gov.br",
+  "Padre Paraíso": "www.camarapadreparaiso.mg.gov.br",
+  "Pedra Azul": "www.camarapedraazul.mg.gov.br",
+  "Rubim": "www.camararubim.mg.gov.br",
+  "Santa Maria do Salto": "www.camarasantamariadosalto.mg.gov.br",
+  "Turmalina": "www.camaraturmalina.mg.gov.br",
+  "Veredinha": "www.camaraveredinha.mg.gov.br"
+ },
+ "proposicoes_html": {
+  "Almenara": "www.camaraalmenara.mg.gov.br",
+  "Mata Verde": "www.camaramataverde.mg.gov.br",
+  "Rio do Prado": "www.camarariodoprado.mg.gov.br"
+ }
 }

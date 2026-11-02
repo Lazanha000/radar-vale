@@ -68,4 +68,22 @@ assert L("Portaria-CMA nº 39: posse de servidor", "lei") == "norma"
 assert L("Vereador defende democracia em Capelinha", "imprensa") == "outro" and L("Chuva em Almenara", "imprensa") is None
 assert L("CÂMARA Municipal, 213ª zona eleitoral", "imprensa", e=True) is None
 assert L("Prefeito sanciona lei do piso", "prefeitura", a=True) == "aprovado" and L("Vacinação", "prefeitura") is None
+# leis do modelo /legislacoes/get/todas: data do arquivo, aprovação pelo tipo
+J = {"data": [{"id": 445, "ano": "2026", "titulo": "Lei", "identificacao": "1876/2026", "ementa": "Revisão geral",
+               "arquivo": {"created_at": "2026-08-14T00:23:13.000000Z"}},
+              {"id": 9, "ano": "2025", "titulo": "Portaria", "identificacao": "3/2025", "ementa": "Nomeia", "arquivo": None}]}
+(l1, a1), (l2, a2) = c.ler_leis(J, "h")
+assert l1["t"] == "Lei nº 1876/2026: Revisão geral" and l1["u"] == "https://h/legislacoes/445" and l1["d"] == "2026-08-14T00:23:13Z" and a1
+assert l2["d"] == "2025-01-01T00:00:00Z" and not a2
+assert c.NORMA_APROVADA.match(c.norm("Proposição de Lei")) and not c.NORMA_APROVADA.match(c.norm("Projeto de Lei"))
+# proposições do modelo pr-item: situação vira aprovação
+HTML = """<article class="pr-item"><span class="pr-item-tipo">Projeto de Lei</span>
+<a class="pr-item-num" href="https://h/legislativo/proposicao/abc">Nº 024-2026</a>
+<h3 class="pr-item-ementa"><a href="x">FIXA A DESPESA</a></h3><span class="pr-item-autor"><i></i> Poder Executivo </span>
+<span>Protocolo em 02/10/2026 &middot; nº 552</span><span class="lg-badge lg-badge-neu">Aprovada</span></article>"""
+(p, ap), = c.ler_proposicoes(HTML)
+assert p["t"] == "Projeto de Lei Nº 024-2026: FIXA A DESPESA" and p["d"] == "2026-10-02T12:00:00Z" and ap
+assert p["r"] == "Situação: Aprovada · Autor: Poder Executivo" and p["u"] == "https://h/legislativo/proposicao/abc"
+assert L("Projeto de Lei Nº 1: X", "proposicao") == "projeto" and L("Projeto de Lei Nº 1: X", "proposicao", a=True) == "aprovado"
+assert L("Projeto de Lei nº 3/2026: Y", "lei") == "projeto" and L("Portaria nº 3: Z", "lei") == "norma"
 print("ok")

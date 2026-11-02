@@ -57,7 +57,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
     <option value="">Todas as fontes</option>
     <option value="imprensa">Imprensa</option>
     <option value="prefeitura">Prefeituras</option>
-    <option value="camara">Câmaras (notícias e normas)</option>
+    <option value="camara">Câmaras (notícias, leis e proposições)</option>
   </select>
   <select id="per">
     <option value="1">Último dia</option><option value="7">7 dias</option>
@@ -82,7 +82,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 <script>
 const R = window.RADAR, $ = id => document.getElementById(id);
 const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const NOME = {imprensa: 'Imprensa', prefeitura: 'Prefeitura', camara: 'Câmara', lei: 'Norma'};
+const NOME = {imprensa: 'Imprensa', prefeitura: 'Prefeitura', camara: 'Câmara', lei: 'Norma', proposicao: 'Proposição'};
 const CAT = {'': 'Tudo', aprovado: 'Aprovações', projeto: 'Projetos', sessao: 'Sessões', norma: 'Portarias e atos', outro: 'Outras'};
 const fmt = d => new Date(d).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'});
 const itens = R.itens.map(i => ({...i, _n: sem(i.t + ' ' + (i.r || '') + ' ' + i.m.join(' '))}));
@@ -105,7 +105,7 @@ function filtrar() {
   } else {
     const tipo = $('tipo').value, ap = $('ap').checked, el = $('el').checked;
     achados = itens.filter(i => base(i) && daCidade(i) &&
-      (!tipo || i.k === tipo || (tipo === 'camara' && i.k === 'lei')) && (!ap || i.a) && (el || !i.e));
+      (!tipo || i.k === tipo || (tipo === 'camara' && (i.k === 'lei' || i.k === 'proposicao'))) && (!ap || i.a) && (el || !i.e));
   }
   mostrando = 100;
   desenhar();
