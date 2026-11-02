@@ -50,6 +50,11 @@ article a:hover{color:var(--ac);text-decoration:underline}
 .res{color:var(--mut);font-size:.9rem;margin:6px 0 0}
 button{padding:10px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit;cursor:pointer}
 footer{color:var(--mut);font-size:.8rem;margin-top:24px}
+.barra{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.barra .n{margin:0}
+.barra button{padding:6px 12px;font-size:.85rem;flex-shrink:0}
+.novo{background:#2f7d4f;color:#fff}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 </style>
 </head>
 <body data-aba="noticias">
@@ -62,16 +67,17 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
   <button role="tab" id="aba-fontes" aria-selected="false">Fontes</button>
 </nav>
 <div class="filtros nao-fontes">
-  <input type="search" id="q" placeholder="Buscar (ex.: escola, saúde, concurso)">
-  <select id="mun"><option value="">Todas as cidades</option></select>
-  <select id="tipo" class="so-noticias">
+  <input type="search" id="q" aria-label="Buscar" placeholder='Buscar (ex.: escola, "saúde mental")'>
+  <select id="mun" aria-label="Cidade"><option value="">Todas as cidades</option></select>
+  <select id="tipo" class="so-noticias" aria-label="Fonte">
     <option value="">Todas as fontes</option>
     <option value="imprensa">Imprensa</option>
     <option value="prefeitura">Prefeituras</option>
     <option value="camara">Câmaras (notícias, leis e proposições)</option>
+    <option value="assembleia">Assembleia de Minas</option>
   </select>
-  <select id="ass"><option value="">Todos os assuntos</option></select>
-  <select id="per">
+  <select id="ass" aria-label="Assunto"><option value="">Todos os assuntos</option></select>
+  <select id="per" aria-label="Período">
     <option value="1">Último dia</option><option value="7">7 dias</option>
     <option value="30">30 dias</option><option value="365">12 meses</option><option value="0" selected>Tudo</option>
   </select>
@@ -86,7 +92,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
   <h2>Aprovações por cidade</h2>
   <ol id="ranking"></ol>
 </section>
-<p class="n nao-fontes" id="n"></p>
+<div class="barra nao-fontes"><p class="n" id="n" aria-live="polite"></p><button type="button" id="csv">Baixar planilha</button></div>
 <div id="lista" class="nao-fontes"></div>
 <button id="mais" class="nao-fontes" hidden>Mostrar mais</button>
 <section class="so-fontes" id="fontes"></section>
@@ -96,7 +102,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 <script>
 const R = window.RADAR, $ = id => document.getElementById(id);
 const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const NOME = {imprensa: 'Imprensa', prefeitura: 'Prefeitura', camara: 'Câmara', lei: 'Norma', proposicao: 'Proposição'};
+const NOME = {imprensa: 'Imprensa', prefeitura: 'Prefeitura', camara: 'Câmara', lei: 'Norma', proposicao: 'Proposição', assembleia: 'Assembleia de Minas'};
 const CAT = {'': 'Tudo', aprovado: 'Aprovações', projeto: 'Projetos', sessao: 'Sessões', norma: 'Portarias e atos', outro: 'Outras'};
 const fmt = d => new Date(d).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'});
 const itens = R.itens.map(i => ({...i, _n: sem(i.t + ' ' + (i.r || '') + ' ' + i.m.join(' '))}));
@@ -107,8 +113,21 @@ const ASSUNTO = R.assuntos || {};
 Object.entries(ASSUNTO).sort((a, b) => a[1].localeCompare(b[1])).forEach(([k, n]) => $('ass').add(new Option(n, k)));
 $('sub').textContent = `${itens.length} itens · atualizado em ${fmt(R.gerado)} às ${new Date(R.gerado).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
 
+// preferências e "novas desde a última visita" ficam só neste navegador; sem armazenamento o painel funciona igual
+const guardado = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* modo privado */ } };
+const CAMPOS = ['q', 'mun', 'tipo', 'ass', 'per', 'ap', 'el', 'cf'];
+const ultimaVisita = guardado('radar-visita');
+guardar('radar-visita', R.gerado);
+const novas = ultimaVisita ? itens.filter(i => i.d > ultimaVisita).length : 0;
+if (novas) $('sub').textContent += ` · ${novas} novas desde sua última visita`;
+
+// busca: palavras soltas ou "frase entre aspas"; todas precisam aparecer
+const termos = s => [...s.matchAll(/"([^"]+)"|(\S+)/g)].map(m => sem(m[1] || m[2]));
+
 function filtrar() {
-  const q = sem($('q').value.trim()).split(/\s+/).filter(Boolean), mun = $('mun').value;
+  guardar('radar-filtros', Object.fromEntries(CAMPOS.map(id => [id, $(id).type === 'checkbox' ? $(id).checked : $(id).value])));
+  const q = termos($('q').value), mun = $('mun').value;
   const dias = +$('per').value, corte = dias ? Date.now() - dias * 864e5 : 0;
   const ass = $('ass').value;
   const base = i => Date.parse(i.d) >= corte && q.every(w => i._n.includes(w)) && (!ass || (i.as || []).includes(ass));
@@ -191,6 +210,7 @@ function desenhar() {
     meta.className = 'meta';
     meta.append(fmt(i.d), chip(i.m.join(', ')), chip(NOME[i.k] + ' · ' + i.f));
     if (aba === 'camaras' && i.lg !== 'aprovado') meta.append(chip(CAT[i.lg]));
+    if (ultimaVisita && i.d > ultimaVisita) meta.append(chip('novo', 'novo'));
     if (i.c === false) meta.append(chip('cidade só no texto', 'incerta'));
     if (i.a) meta.append(chip('aprovação', 'ap'));
     for (const s of i.as || []) meta.append(chip(ASSUNTO[s], 'assunto'));
@@ -253,7 +273,25 @@ $('aba-noticias').onclick = () => mudarAba('noticias');
 $('aba-camaras').onclick = () => mudarAba('camaras');
 $('aba-fontes').onclick = () => mudarAba('fontes');
 $('mais').onclick = () => { mostrando += 100; desenhar(); };
-['q', 'mun', 'tipo', 'ass', 'per', 'ap', 'el', 'cf'].forEach(id => $(id).addEventListener('input', filtrar));
+const salvos = guardado('radar-filtros') || {};
+for (const id of CAMPOS) {
+  if (id in salvos) $(id)[$(id).type === 'checkbox' ? 'checked' : 'value'] = salvos[id];
+  if ($(id).tagName === 'SELECT' && $(id).selectedIndex < 0) $(id).selectedIndex = 0;  // opção que não existe mais
+  $(id).addEventListener('input', filtrar);
+}
+
+// planilha (CSV, abre no Excel/Sheets) com o que está filtrado agora
+$('csv').onclick = () => {
+  const cel = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const linhas = [['data', 'cidades', 'título', 'fonte', 'tipo', 'assuntos', 'link']].concat(achados.map(i =>
+    [i.d.slice(0, 10), i.m.join('; '), i.t, i.f, NOME[i.k], (i.as || []).map(s => ASSUNTO[s]).join('; '), i.u]));
+  const blob = new Blob(['﻿' + linhas.map(l => l.map(cel).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `radar-vale-${aba}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 const f = R.fontes;
 $('rodape').textContent = `Fontes com resultado nesta coleta: ${f.com_itens} de ${f.total}. Detalhes na aba Fontes.`;
 mudarAba(ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'noticias');

@@ -108,4 +108,16 @@ CF = lambda t, m, k="imprensa": c.confirmada({"t": t, "r": "", "m": m, "k": k}, 
 assert CF("Chuva forte em Medina (MG)", ["Medina"]) and not CF("Chuva forte em 230 cidades de MG", ["Medina"])
 assert CF("Seca castiga o Vale do Jequitinhonha", [c.REGIAO]) and CF("Edital", ["Medina"], "prefeitura")
 assert not CF("Obra em Araçuaí", ["Medina"])  # cita outra cidade, não a do item
+# Assembleia: link público, situação e texto para achar a cidade
+AL = {"resultado": {"listaItem": [{"siglaTipoProjeto": "PL", "numero": "6209", "ano": "2026", "tipoProjeto": "PROJETO DE LEI",
+      "ementa": "Declara de utilidade pública associação de Medina.", "situacao": "Aguardando sanção", "autor": "Deputado X      PSD\n",
+      "dataPublicacao": "2026-10-23", "indexacao": "Utilidade pública, Município de Medina"}]}}
+(b, texto, a), = c.ler_assembleia(AL)
+assert b["u"] == "https://www.almg.gov.br/projetos-de-lei/PL/6209/2026" and a and b["t"].startswith("Projeto de lei 6209/2026: Declara")
+assert b["r"] == "Situação: Aguardando sanção · Autor: Deputado X PSD" and c.marcar(texto, P) == ["Medina"]
+RQ = {"resultado": {"listaItem": [{"siglaTipoProjeto": "RQC", "numero": "1", "ano": "2026", "tipoProjeto": "REQUERIMENTO DE COMISSÃO",
+      "assunto": "Requer providências para servidor.", "situacao": "Aprovado", "indexacao": "/Região/Jequitinhonha-Mucuri/Teófilo Otoni"}]}}
+(b, texto, a), = c.ler_assembleia(RQ)
+assert b["t"] == "Requerimento de comissão 1/2026: Requer providências para servidor." and c.marcar(texto, P) == []
+assert L("Projeto de lei 1/2026: x", "assembleia") == "projeto" and L("Projeto de lei 1/2026: x", "assembleia", a=True) == "aprovado"
 print("ok")

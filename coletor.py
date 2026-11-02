@@ -15,7 +15,7 @@ AQUI = Path(__file__).parent
 SAIDA = AQUI / "painel" / "noticias.js"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
 REGIAO = "Vale do Jequitinhonha"
-PROPRIOS = {"prefeitura", "camara", "lei", "proposicao"}  # id pelo link: títulos genéricos se repetem entre cidades
+PROPRIOS = {"prefeitura", "camara", "lei", "proposicao", "assembleia"}  # id pelo link: títulos genéricos se repetem entre cidades
 # nomes que também são palavra, sobrenome ou lugar de outro estado: só valem com contexto de MG
 AMBIGUOS = {"Datas", "Jacinto", "Bandeira", "Gouveia", "Rubim", "Medina", "Mata Verde", "Berilo", "Turmalina",
             "Carbonita", "Jordânia", "Aricanduva", "Presidente Kubitschek", "Pedra Azul", "Itinga", "Caraí"}
@@ -165,7 +165,7 @@ def monta(bruto, fonte, kind, pads, mun=None, confiavel=False, regiao=False, apr
     if not ms or not titulo or not bruto["u"].startswith("http"):
         return None
     return {"t": titulo, "u": bruto["u"], "d": bruto["d"], "r": r[:300], "f": bruto["f"] or fonte,
-            "k": kind, "o": mun or "", "m": ms, "a": aprov if kind in ("lei", "proposicao") else bool(APROV.search(norm(titulo)))}
+            "k": kind, "o": mun or "", "m": ms, "a": aprov if kind in ("lei", "proposicao", "assembleia") else bool(APROV.search(norm(titulo)))}
 
 
 def tarefa_feed(rotulo, urls, kind, pads, mun=None, confiavel=False, regiao=False):
@@ -240,6 +240,38 @@ def ler_proposicoes(pagina):
                      "r": f"Situação: {c['sit']} · Autor: {c['autor']}", "f": ""},
                     norm(c["sit"]) in SITUACAO_APROVADA))
     return out
+
+
+def ler_assembleia(dados):
+    """Proposições da ALMG (API de dados abertos) -> itens brutos; o texto todo serve para achar a cidade."""
+    out = []
+    for r in dados["resultado"].get("listaItem", []):
+        sigla, num, ano = r.get("siglaTipoProjeto"), r.get("numero"), r.get("ano")
+        sit = limpa(r.get("situacao"))
+        autor = re.sub(r"\s{2,}", " ", limpa(r.get("autor")))
+        out.append(({"t": f"{limpa(r.get('tipoProjeto')).capitalize()} {num}/{ano}: {limpa(r.get('ementa') or r.get('assunto') or r.get('resumo'))}",
+                     "u": f"https://www.almg.gov.br/projetos-de-lei/{sigla}/{num}/{ano}",
+                     "d": data_iso(r.get("dataPublicacao") or r.get("dataUltimaAcao")), "f": "",
+                     "r": f"Situação: {sit} · Autor: {autor}"},
+                    # "Jequitinhonha-Mucuri" é a região de planejamento do Estado (inclui Teófilo Otoni), não a cidade
+                    re.sub(r"Jequitinhonha-Mucuri", " ", " ".join(limpa(r.get(k)) for k in ("ementa", "assunto", "resumo", "indexacao", "observacao"))),
+                    bool(re.search(r"aprovad|sancionad|aguardando sancao|transformad|promulgad", norm(sit)))))
+    return out
+
+
+def tarefa_assembleia(pads, paginas=3):
+    """As 300 proposições mais recentes da Assembleia de Minas; ficam só as que citam cidade do Vale."""
+    ano, itens = datetime.now().year, []
+    try:
+        for p in range(1, paginas + 1):
+            url = f"https://dadosabertos.almg.gov.br/api/v2/proposicoes/pesquisa/direcionada?formato=json&tp=100&p={p}&ord=0&ano={ano}"
+            for b, texto, a in ler_assembleia(json.loads(baixar(url))):
+                ms = marcar(f"{b['t']} {texto}", pads, regiao=True)
+                if ms:
+                    itens.append(dict(b, t=b["t"][:400], k="assembleia", o="", m=ms, a=a, f="Assembleia de Minas"))
+    except Exception as e:
+        return "Assembleia: proposições", itens, type(e).__name__
+    return "Assembleia: proposições", itens, None
 
 
 def tarefa_leis(mun, host, pads):
@@ -326,8 +358,8 @@ def legislativo(i):
         return None  # da prefeitura só entra "prefeito sanciona lei"
     if i["a"]:
         return "aprovado"
-    if i["k"] in ("lei", "proposicao"):
-        return "projeto" if i["k"] == "proposicao" or t.startswith("projeto") else "norma"
+    if i["k"] in ("lei", "proposicao", "assembleia"):
+        return "projeto" if i["k"] != "lei" or t.startswith("projeto") else "norma"
     return "projeto" if PROJETO.search(t) else "sessao" if SESSAO.search(t) else "outro"
 
 
@@ -405,7 +437,7 @@ def main():
     feeds, proprios = [], {}
     for tipo, kind, rot in (("prefeituras", "prefeitura", "Prefeitura de"), ("camaras", "camara", "Câmara de")):
         for m, host in fontes[tipo].items():
-            feeds.append((f"{rot} {m}", [f"https://{host}/noticias.rss", f"https://{host}/feed/"], kind, m, True, False))
+            feeds.append((f"{rot} {m}", [f"https://{host}/noticias.rss", f"https://{host}/feed/", f"https://{host}/institucional/noticias/RSS"], kind, m, True, False))
             proprios[f"{rot} {m}"] = (host, kind, m)
     for r in fontes["regionais"]:
         feeds.append((r["nome"], [r["url"]], "imprensa", None, False, True))
@@ -416,6 +448,7 @@ def main():
         fut += [pf.submit(tarefa_sapl, m, h, pads) for m, h in fontes["sapl"].items()]
         fut += [pf.submit(tarefa_leis, m, h, pads) for m, h in fontes["leis_json"].items()]
         fut += [pf.submit(tarefa_proposicoes, m, h, pads) for m, h in fontes["proposicoes_html"].items()]
+        fut.append(pf.submit(tarefa_assembleia, pads))
         fut += [pg.submit(tarefa_veiculo, v["nome"], v["site"], dias, pads) for v in fontes["veiculos_site"]]
         resultados = [f.result() for f in fut]
 
