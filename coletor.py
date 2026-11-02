@@ -311,6 +311,12 @@ def tarefa_sitemap(rotulo, host, kind, mun, pads, conhecidos, limite=40):
     return rotulo, itens, None if itens else "sitemap sem notícias novas"
 
 
+def confirmada(i, pads):
+    """Imprensa: alguma cidade do item aparece no título/resumo? Se não, o Google achou só no corpo da matéria (pode ser ruído).
+    Fontes próprias (prefeitura, câmara) são sempre confirmadas."""
+    return i["k"] != "imprensa" or bool(set(marcar(f"{i['t']} {i['r']}", pads, regiao=True)) & set(i["m"]))
+
+
 def legislativo(i):
     """Categoria da aba Câmaras (aprovado/projeto/sessao/norma/outro) ou None se o item não é do legislativo."""
     t = norm(i["t"])
@@ -442,6 +448,7 @@ def main():
         i["e"] = i["k"] == "imprensa" and bool(ELEICAO.search(norm(i["t"])))
         i["lg"] = legislativo(i)
         i["as"] = assuntos(f"{i['t']} {i['r']}")
+        i["c"] = confirmada(i, pads)
     falhas = [{"fonte": r, "erro": e} for r, _, e in resultados if e and r not in resgatadas]
     dados = {"gerado": agora, "saude": saude, "assuntos": {k: nome for k, (nome, _) in ASSUNTOS.items()},
              "municipios": sorted(muns) + [REGIAO],

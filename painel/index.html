@@ -45,6 +45,7 @@ article a:hover{color:var(--ac);text-decoration:underline}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.8rem;color:var(--mut);align-items:center}
 .chip{background:var(--chip);border-radius:99px;padding:2px 9px}
 .assunto{background:none;border:1px solid var(--bd)}
+.incerta{background:none;border:1px dashed var(--mut);font-style:italic}
 .ap{background:var(--ac);color:#fff}
 .res{color:var(--mut);font-size:.9rem;margin:6px 0 0}
 button{padding:10px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit;cursor:pointer}
@@ -77,6 +78,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
   <div class="chks so-noticias">
     <label class="chk" title="Aprovado, sancionado; leis, resoluções e decretos legislativos"><input type="checkbox" id="ap"> Só aprovações</label>
     <label class="chk" title="Resultados de votação por cidade (G1, UOL)"><input type="checkbox" id="el"> Mostrar eleições</label>
+    <label class="chk" title="Esconde notícias em que a cidade não aparece no título nem no resumo (o Google achou só no texto)"><input type="checkbox" id="cf"> Só cidade no título</label>
   </div>
 </div>
 <div class="cats so-camaras" id="cats"></div>
@@ -118,9 +120,9 @@ function filtrar() {
     desenharCats(doMun);
     achados = doMun.filter(i => cat ? i.lg === cat : i.lg !== 'outro');  // "Tudo" deixa de fora avisos e datas comemorativas
   } else {
-    const tipo = $('tipo').value, ap = $('ap').checked, el = $('el').checked;
+    const tipo = $('tipo').value, ap = $('ap').checked, el = $('el').checked, cf = $('cf').checked;
     achados = itens.filter(i => base(i) && daCidade(i) &&
-      (!tipo || i.k === tipo || (tipo === 'camara' && (i.k === 'lei' || i.k === 'proposicao'))) && (!ap || i.a) && (el || !i.e));
+      (!tipo || i.k === tipo || (tipo === 'camara' && (i.k === 'lei' || i.k === 'proposicao'))) && (!ap || i.a) && (el || !i.e) && (!cf || i.c !== false));
   }
   mostrando = 100;
   desenhar();
@@ -189,6 +191,7 @@ function desenhar() {
     meta.className = 'meta';
     meta.append(fmt(i.d), chip(i.m.join(', ')), chip(NOME[i.k] + ' · ' + i.f));
     if (aba === 'camaras' && i.lg !== 'aprovado') meta.append(chip(CAT[i.lg]));
+    if (i.c === false) meta.append(chip('cidade só no texto', 'incerta'));
     if (i.a) meta.append(chip('aprovação', 'ap'));
     for (const s of i.as || []) meta.append(chip(ASSUNTO[s], 'assunto'));
     a.append(t, meta);
@@ -250,7 +253,7 @@ $('aba-noticias').onclick = () => mudarAba('noticias');
 $('aba-camaras').onclick = () => mudarAba('camaras');
 $('aba-fontes').onclick = () => mudarAba('fontes');
 $('mais').onclick = () => { mostrando += 100; desenhar(); };
-['q', 'mun', 'tipo', 'ass', 'per', 'ap', 'el'].forEach(id => $(id).addEventListener('input', filtrar));
+['q', 'mun', 'tipo', 'ass', 'per', 'ap', 'el', 'cf'].forEach(id => $(id).addEventListener('input', filtrar));
 const f = R.fontes;
 $('rodape').textContent = `Fontes com resultado nesta coleta: ${f.com_itens} de ${f.total}. Detalhes na aba Fontes.`;
 mudarAba(ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'noticias');

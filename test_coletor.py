@@ -103,4 +103,9 @@ assert A("Rio do Prado recebe festival") == ["cultura"] and A("Turmalina e Diama
 assert A("Homem morre afogado em represa") == ["seguranca", "agua"]
 assert A("Carreata em Água Boa") == [] and A("Sismo perto de Araçuaí") == ["agua"]
 assert A("Prefeitura abre processo seletivo para professores") == ["educacao", "concursos"]
+# selo de confiança: cidade no título/resumo; prefeitura/câmara sempre confiável
+CF = lambda t, m, k="imprensa": c.confirmada({"t": t, "r": "", "m": m, "k": k}, P)
+assert CF("Chuva forte em Medina (MG)", ["Medina"]) and not CF("Chuva forte em 230 cidades de MG", ["Medina"])
+assert CF("Seca castiga o Vale do Jequitinhonha", [c.REGIAO]) and CF("Edital", ["Medina"], "prefeitura")
+assert not CF("Obra em Araçuaí", ["Medina"])  # cita outra cidade, não a do item
 print("ok")
