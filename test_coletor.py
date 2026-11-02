@@ -94,4 +94,13 @@ assert s1["B"]["erro"] == "HTTPError" and "ok" not in s1["B"] and s1["C"]["ok"] 
 s2 = c.atualizar_saude(s1, [("A", [], "HTTPError")], {}, "T2", "nuvem")
 assert s2["A"]["ok"] == "T1" and s2["A"]["onde"] == "PC" and s2["A"]["falha"] == "T2" and s2["A"]["recente"] == "2026-10-01T00:00:00Z"
 assert "B" not in s2  # fonte que saiu da lista sai da saúde
+# assuntos: palavra inteira, sem acento, vários por notícia; nome de cidade não vira assunto
+A = c.assuntos
+assert A("Hospital de Araçuaí abre vagas para médicos") == ["saude", "economia"]
+assert A("Seca no Vale: Copasa amplia caminhões-pipa") == ["agua"]
+assert A("Sigma Lithium amplia mineração de lítio") == ["mineracao"]
+assert A("Rio do Prado recebe festival") == ["cultura"] and A("Turmalina e Diamantina") == []
+assert A("Homem morre afogado em represa") == ["seguranca", "agua"]
+assert A("Carreata em Água Boa") == [] and A("Sismo perto de Araçuaí") == ["agua"]
+assert A("Prefeitura abre processo seletivo para professores") == ["educacao", "concursos"]
 print("ok")

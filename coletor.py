@@ -31,6 +31,39 @@ SESSAO = re.compile(r"reuniao (ordinaria|extraordinaria|extra ordinaria|solene|e
                     r"|\bpauta\b|\bata\b|tribuna livre|mesa diretora|\bposse\b|comissao")
 SOBRE_CAMARA = re.compile(r"camara (municipal|de vereadores)|vereador")
 APROV = re.compile(r"aprov|sancion|promulg")
+# assuntos por palavra-chave no título e resumo (texto já sem acento); uma notícia pode ter vários
+ASSUNTOS = {
+    "saude": ("Saúde", r"saude|hospita\w*|vacin\w*|ubs|posto de saude|medic[oa]s?|sus|dengue|chikungunya|samu|doencas?|epidemia"
+                       r"|odontolog\w*|oncolog\w*|enfermag\w*|covid|gripe|cancer|outubro rosa|novembro azul"),
+    "educacao": ("Educação", r"escola\w*|educa\w*|ensino|alunos?|estudantes?|professor\w*|creches?|ufvjm|ifnmg|universidade\w*"
+                            r"|faculdade\w*|enem|matriculas?|alfabetiza\w*|merenda|transporte escolar"),
+    "obras": ("Obras e infraestrutura", r"obras?|pavimenta\w*|asfalt\w*|estradas?|rodovias?|br \d{3}|mgc? \d{3}|pontes?|calcamento"
+                                       r"|saneamento|esgoto|iluminacao|reformas?|construc\w*|habitac\w*|moradias?|energia eletrica|cemig|apagao"),
+    "seguranca": ("Segurança e acidentes", r"policia\w*|pm|presos?|prisao|crimes?|criminos\w*|homicidios?|assassin\w*|assaltos?"
+                                          r"|roubos?|furtos?|drogas?|trafico|apreen\w*|violencia|mort[oa]s?|morre\w*|acidentes?"
+                                          r"|bombeiros?|afogad\w*|tiros?|armas?|feridos?"),
+    "agua": ("Água, seca e clima", r"seca|estiagem|chuvas?|agua(?! boa)|copasa|copanor|barragens?|represas?|rio (jequitinhonha|aracuai|vermelho)"
+                                  r"|nascentes?|meio ambiente|ambienta\w*|desmatamento|queimadas?|incendios?|clima\w*|calor|temporal|sismo|tremor de terra"),
+    "mineracao": ("Mineração", r"minera\w*|litio|lithium|sigma|garimp\w*|minerio|minerais|jazidas?|diamantes?|pedras preciosas"),
+    "economia": ("Economia e emprego", r"empregos?|vagas?|econom\w*|empresas?|empreend\w*|comercio|investiment\w*|renda|salari\w*"
+                                      r"|negocios?|impostos?|iptu|credito|sebrae|turismo"),
+    "cultura": ("Cultura e turismo", r"cultura\w*|festivais|festival|festas?|artesanato|artesa\w*|musica\w*|shows?|turis\w*"
+                                    r"|patrimonio|carnaval|teatro|cinema|livros?|bibliotecas?|tradic\w*|folclor\w*|religios\w*"),
+    "esporte": ("Esporte", r"esportes?|esportiv\w*|futebol|campeonatos?|torneios?|atletas?|corridas?|olimpiadas?|ginasio|futsal|libertadores"),
+    "agro": ("Agro e zona rural", r"agricult\w*|agro\w*|rural|produtor\w*|lavouras?|safras?|cafe|leite|gado|pecuaria|emater"
+                                 r"|hortas?|irrigacao|sementes?|colheita"),
+    "social": ("Assistência social", r"assistencia social|cras|creas|bolsa familia|cadunico|cadastro unico|vulnerab\w*|idosos?"
+                                    r"|crianc\w*|violencia domestica|fome|cestas? basicas?|auxilio\w*|apae|deficien\w*"),
+    "concursos": ("Concursos e seleções", r"concursos?|processo seletivo|seletivo|editais|edital|inscric\w*|convocac\w*|nomeac\w*"),
+    "politica": ("Política", r"prefeit[oa]s?|vereador\w*|deputad\w*|governador\w*|eleic\w*|eleit\w*|camara municipal|assembleia"
+                            r"|senador\w*|presidente|partidos?|mandato|zema|lula|bolsonaro"),
+}
+ASSUNTOS_RX = {k: re.compile(rf"\b({rx})\b") for k, (_, rx) in ASSUNTOS.items()}
+
+
+def assuntos(texto):
+    t = norm(texto)
+    return [k for k, rx in ASSUNTOS_RX.items() if rx.search(t)]
 NORMA_APROVADA = re.compile(r"(lei|decreto legislativo|resolucao|emenda|proposicao de lei|ato de promulgacao)( |$)")  # portaria e decreto do executivo não são aprovação
 # "Vale do Jequitinhonha" e "rio Jequitinhonha" não são a cidade; "Chapada Diamantina" é na Bahia
 EXCETO = {"jequitinhonha": r"(?<!vale do )(?<!rio )(?<!alto )(?<!medio )(?<!baixo )(?<!bacia do )(?<!regiao do )",
@@ -408,8 +441,9 @@ def main():
     for i in itens:
         i["e"] = i["k"] == "imprensa" and bool(ELEICAO.search(norm(i["t"])))
         i["lg"] = legislativo(i)
+        i["as"] = assuntos(f"{i['t']} {i['r']}")
     falhas = [{"fonte": r, "erro": e} for r, _, e in resultados if e and r not in resgatadas]
-    dados = {"gerado": agora, "saude": saude,
+    dados = {"gerado": agora, "saude": saude, "assuntos": {k: nome for k, (nome, _) in ASSUNTOS.items()},
              "municipios": sorted(muns) + [REGIAO],
              "fontes": {"total": len(resultados), "com_itens": sum(1 for _, i, _ in resultados if i) + len(resgatadas), "falhas": falhas},
              "itens": itens}

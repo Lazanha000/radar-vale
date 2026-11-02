@@ -44,6 +44,7 @@ article a{color:var(--tx);font-weight:600;text-decoration:none}
 article a:hover{color:var(--ac);text-decoration:underline}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.8rem;color:var(--mut);align-items:center}
 .chip{background:var(--chip);border-radius:99px;padding:2px 9px}
+.assunto{background:none;border:1px solid var(--bd)}
 .ap{background:var(--ac);color:#fff}
 .res{color:var(--mut);font-size:.9rem;margin:6px 0 0}
 button{padding:10px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit;cursor:pointer}
@@ -68,6 +69,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
     <option value="prefeitura">Prefeituras</option>
     <option value="camara">Câmaras (notícias, leis e proposições)</option>
   </select>
+  <select id="ass"><option value="">Todos os assuntos</option></select>
   <select id="per">
     <option value="1">Último dia</option><option value="7">7 dias</option>
     <option value="30">30 dias</option><option value="365">12 meses</option><option value="0" selected>Tudo</option>
@@ -99,12 +101,15 @@ const itens = R.itens.map(i => ({...i, _n: sem(i.t + ' ' + (i.r || '') + ' ' + i
 let mostrando = 100, achados = [], aba = 'noticias', cat = '';
 
 R.municipios.forEach(m => $('mun').add(new Option(m, m)));
+const ASSUNTO = R.assuntos || {};
+Object.entries(ASSUNTO).sort((a, b) => a[1].localeCompare(b[1])).forEach(([k, n]) => $('ass').add(new Option(n, k)));
 $('sub').textContent = `${itens.length} itens · atualizado em ${fmt(R.gerado)} às ${new Date(R.gerado).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
 
 function filtrar() {
   const q = sem($('q').value.trim()).split(/\s+/).filter(Boolean), mun = $('mun').value;
   const dias = +$('per').value, corte = dias ? Date.now() - dias * 864e5 : 0;
-  const base = i => Date.parse(i.d) >= corte && q.every(w => i._n.includes(w));
+  const ass = $('ass').value;
+  const base = i => Date.parse(i.d) >= corte && q.every(w => i._n.includes(w)) && (!ass || (i.as || []).includes(ass));
   const daCidade = i => !mun || i.m.includes(mun);
   if (aba === 'camaras') {
     const leg = itens.filter(i => i.lg && base(i));
@@ -185,6 +190,7 @@ function desenhar() {
     meta.append(fmt(i.d), chip(i.m.join(', ')), chip(NOME[i.k] + ' · ' + i.f));
     if (aba === 'camaras' && i.lg !== 'aprovado') meta.append(chip(CAT[i.lg]));
     if (i.a) meta.append(chip('aprovação', 'ap'));
+    for (const s of i.as || []) meta.append(chip(ASSUNTO[s], 'assunto'));
     a.append(t, meta);
     if (i.r) { const p = document.createElement('p'); p.className = 'res'; p.textContent = i.r; a.append(p); }
     l.append(a);
@@ -244,7 +250,7 @@ $('aba-noticias').onclick = () => mudarAba('noticias');
 $('aba-camaras').onclick = () => mudarAba('camaras');
 $('aba-fontes').onclick = () => mudarAba('fontes');
 $('mais').onclick = () => { mostrando += 100; desenhar(); };
-['q', 'mun', 'tipo', 'per', 'ap', 'el'].forEach(id => $(id).addEventListener('input', filtrar));
+['q', 'mun', 'tipo', 'ass', 'per', 'ap', 'el'].forEach(id => $(id).addEventListener('input', filtrar));
 const f = R.fontes;
 $('rodape').textContent = `Fontes com resultado nesta coleta: ${f.com_itens} de ${f.total}. Detalhes na aba Fontes.`;
 mudarAba(ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'noticias');
