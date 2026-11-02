@@ -1,0 +1,151 @@
+{
+ "prefeituras": {
+  "Almenara": "www.almenara.mg.gov.br",
+  "Cachoeira de Pajeú": "cachoeiradepajeu.mg.gov.br",
+  "Angelândia": "angelandia.mg.gov.br",
+  "Araçuaí": "aracuai.mg.gov.br",
+  "Aricanduva": "aricanduva.mg.gov.br",
+  "Bandeira": "bandeira.atende.net",
+  "Caraí": "carai.mg.gov.br",
+  "Carbonita": "carbonita.mg.gov.br",
+  "Chapada do Norte": "chapadadonorte.mg.gov.br",
+  "Comercinho": "comercinho.mg.gov.br",
+  "Coronel Murta": "coronelmurta.mg.gov.br",
+  "Couto de Magalhães de Minas": "coutodemagalhaesdeminas.mg.gov.br",
+  "Datas": "www.datas.mg.gov.br",
+  "Diamantina": "diamantina.mg.gov.br",
+  "Divisópolis": "divisopolis.mg.gov.br",
+  "Felício dos Santos": "feliciodossantos.mg.gov.br",
+  "Felisburgo": "felisburgo.mg.gov.br",
+  "Francisco Badaró": "franciscobadaro.mg.gov.br",
+  "Itamarandiba": "itamarandiba.mg.gov.br",
+  "Itinga": "www.itinga.mg.gov.br",
+  "Jenipapo de Minas": "jenipapodeminas.mg.gov.br",
+  "Jequitinhonha": "jequitinhonha.mg.gov.br",
+  "Joaíma": "joaima.mg.gov.br",
+  "Jordânia": "jordania.mg.gov.br",
+  "José Gonçalves de Minas": "josegoncalvesdeminas.mg.gov.br",
+  "Leme do Prado": "lemedoprado.mg.gov.br",
+  "Mata Verde": "www.mataverde.mg.gov.br",
+  "Medina": "medina.mg.gov.br",
+  "Minas Novas": "minasnovas.mg.gov.br",
+  "Monte Formoso": "monteformoso.mg.gov.br",
+  "Novo Cruzeiro": "novocruzeiro.mg.gov.br",
+  "Padre Paraíso": "padreparaiso.mg.gov.br",
+  "Palmópolis": "www.palmopolis.mg.gov.br",
+  "Ponto dos Volantes": "pontodosvolantes.mg.gov.br",
+  "Rio do Prado": "www.riodoprado.mg.gov.br",
+  "Rubim": "rubim.mg.gov.br",
+  "Salto da Divisa": "www.saltodadivisa.mg.gov.br",
+  "Santa Maria do Salto": "santamariadosalto.mg.gov.br",
+  "Santo Antônio do Jacinto": "santoantoniodojacinto.mg.gov.br",
+  "Turmalina": "turmalina.mg.gov.br",
+  "Veredinha": "veredinha.mg.gov.br",
+  "Virgem da Lapa": "virgemdalapa.mg.gov.br"
+ },
+ "camaras": {
+  "Almenara": "www.camaraalmenara.mg.gov.br",
+  "Angelândia": "www.camaraangelandia.mg.gov.br",
+  "Aricanduva": "www.camaraaricanduva.mg.gov.br",
+  "Bandeira": "www.camarabandeira.mg.gov.br",
+  "Berilo": "berilo.cam.mg.gov.br",
+  "Capelinha": "www.camaracapelinha.mg.gov.br",
+  "Caraí": "carai.cam.mg.gov.br",
+  "Carbonita": "www.camaracarbonita.mg.gov.br",
+  "Chapada do Norte": "www.camarachapadadonorte.mg.gov.br",
+  "Couto de Magalhães de Minas": "coutodemagalhaesdeminas.mg.leg.br",
+  "Datas": "www.camaradatas.mg.gov.br",
+  "Diamantina": "cmdiamantina.mg.gov.br",
+  "Divisópolis": "www.camaradivisopolis.mg.gov.br",
+  "Felício dos Santos": "cmfeliciodossantos.mg.gov.br",
+  "São Gonçalo do Rio Preto": "cmsaogoncalodoriopreto.mg.gov.br",
+  "Francisco Badaró": "www.camarafranciscobadaro.mg.gov.br",
+  "Itamarandiba": "itamarandiba.mg.leg.br",
+  "Itaobim": "www.camaraitaobim.mg.gov.br",
+  "Itinga": "www.camaraitinga.mg.gov.br",
+  "Jacinto": "jacinto.mg.leg.br",
+  "Jenipapo de Minas": "www.camarajenipapodeminas.mg.gov.br",
+  "Jequitinhonha": "www.camarajequitinhonha.mg.gov.br",
+  "Joaíma": "www.camarajoaima.mg.gov.br",
+  "Jordânia": "jordania.cam.mg.gov.br",
+  "José Gonçalves de Minas": "www.camarajosegoncalvesdeminas.mg.gov.br",
+  "Leme do Prado": "www.camaralemedoprado.mg.gov.br",
+  "Mata Verde": "www.camaramataverde.mg.gov.br",
+  "Medina": "www.camaramedina.mg.gov.br",
+  "Minas Novas": "minasnovas.mg.leg.br",
+  "Monte Formoso": "cmmonteformoso.mg.gov.br",
+  "Novo Cruzeiro": "www.camaranovocruzeiro.mg.gov.br",
+  "Padre Paraíso": "www.camarapadreparaiso.mg.gov.br",
+  "Palmópolis": "www.camarapalmopolis.mg.gov.br",
+  "Pedra Azul": "www.camarapedraazul.mg.gov.br",
+  "Ponto dos Volantes": "www.camarapontodosvolantes.mg.gov.br",
+  "Presidente Kubitschek": "presidentekubitschek.mg.leg.br",
+  "Rio do Prado": "www.camarariodoprado.mg.gov.br",
+  "Rubim": "www.camararubim.mg.gov.br",
+  "Salto da Divisa": "saltodadivisa.mg.leg.br",
+  "Santa Maria do Salto": "www.camarasantamariadosalto.mg.gov.br",
+  "Santo Antônio do Jacinto": "www.camarasantoantoniodojacinto.mg.gov.br",
+  "Turmalina": "www.camaraturmalina.mg.gov.br",
+  "Veredinha": "www.camaraveredinha.mg.gov.br",
+  "Virgem da Lapa": "cmvirgemdalapa.mg.gov.br"
+ },
+ "sapl": {
+  "Araçuaí": "sapl.aracuai.mg.leg.br",
+  "Chapada do Norte": "sapl.chapadadonorte.mg.leg.br",
+  "Felício dos Santos": "sapl.feliciodossantos.mg.leg.br",
+  "Itamarandiba": "sapl.itamarandiba.mg.leg.br",
+  "Salto da Divisa": "sapl.saltodadivisa.mg.leg.br"
+ },
+ "regionais": [
+  {
+   "nome": "Agência Minas",
+   "url": "https://www.agenciaminas.mg.gov.br/feed"
+  },
+  {
+   "nome": "Estado de Minas",
+   "url": "https://www.em.com.br/feed"
+  },
+  {
+   "nome": "g1 Vales de Minas",
+   "url": "https://g1.globo.com/rss/g1/minas-gerais/vales-mg/"
+  },
+  {
+   "nome": "Assembleia de Minas",
+   "url": "https://www.almg.gov.br/rss"
+  },
+  {
+   "nome": "Diário do Comércio",
+   "url": "https://www.diariodocomercio.com.br/feed"
+  },
+  {
+   "nome": "Gazeta de Araçuaí",
+   "url": "https://gazetadearacuai.com.br/rss.xml"
+  }
+ ],
+ "veiculos_site": [
+  {
+   "nome": "CSA Studio Web Rádio (Capelinha)",
+   "site": "csastudiowebradio.com.br"
+  },
+  {
+   "nome": "Portal Teófilo Otoni",
+   "site": "portalteofilootoni.com.br"
+  },
+  {
+   "nome": "Diário Tribuna",
+   "site": "diariotribuna.com.br"
+  },
+  {
+   "nome": "UFVJM",
+   "site": "portal.ufvjm.edu.br"
+  },
+  {
+   "nome": "Polo Jequitinhonha UFMG",
+   "site": "ufmg.br/polojequitinhonha"
+  }
+ ],
+ "so_com_cidade_no_texto": [
+  "csastudiowebradio.com.br",
+  "CSA Studio Web Rádio (Capelinha)"
+ ]
+}

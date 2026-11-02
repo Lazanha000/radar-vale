@@ -1,0 +1,71 @@
+"""Checagem rápida da lógica que decide o que entra no painel: python test_coletor.py"""
+import coletor as c
+
+P = c.padroes(["Datas", "Jacinto", "Santo Antônio do Jacinto", "Jequitinhonha", "Diamantina", "Araçuaí", "Medina"])
+
+# nome comum só vale com contexto de MG
+assert c.marcar("Veja as datas do concurso", P) == []
+assert c.marcar("Prefeitura de Datas abre vagas", P) == ["Datas"]
+# nome longo não vira também o curto
+assert c.marcar("Obra em Santo Antônio do Jacinto, MG", P) == ["Santo Antônio do Jacinto"]
+# região e rio não são a cidade; a cidade é
+assert c.marcar("Seca no Vale do Jequitinhonha", P) == []
+assert c.marcar("Seca no Vale do Jequitinhonha", P, regiao=True) == [c.REGIAO]
+assert c.marcar("Câmara de Jequitinhonha aprova projeto", P) == ["Jequitinhonha"]
+assert c.marcar("Turismo na Chapada Diamantina", P) == []
+# acento e caixa não importam; fonte própria é confiável mesmo sem contexto
+assert c.marcar("ARAÇUAÍ recebe feira", P) == ["Araçuaí"]
+assert c.marcar("Edital de concurso", P, "Medina", confiavel=True) == ["Medina"]
+assert c.marcar("Edital de concurso", P, "Medina") == []
+assert c.marcar("Concurso EMATER MG: 120 vagas", P, "Datas") == []
+assert c.marcar("Lula ganha em Jacinto (MG)", P, "Jacinto") == ["Jacinto"]
+
+RSS = """<rss><channel><item><title>Câmara aprova lei - Fonte X</title><link>https://a.b/1</link>
+<pubDate>Mon, 02 Nov 2026 01:30:01 GMT</pubDate><source>Fonte X</source></item></channel></rss>"""
+b = c.parse_feed(RSS)[0]
+assert b["d"] == "2026-11-02T01:30:01Z" and b["f"] == "Fonte X"
+i = c.monta(b, "x", "imprensa", P, "Araçuaí")
+assert i["t"] == "Câmara aprova lei" and i["a"] and i["m"] == ["Araçuaí"]
+try:
+    c.parse_feed("<html><body>oi</body></html>")
+    raise SystemExit("página HTML não podia virar feed")
+except ValueError:
+    pass
+
+# imprensa: mesmo título vira um item só, com cidades somadas e o link direto no lugar do Google
+a = {"t": "Chuva forte", "u": "https://news.google.com/x", "d": "2026-01-02T00:00:00Z", "m": ["Medina"], "k": "imprensa", "r": "", "a": False, "f": "G"}
+b2 = dict(a, u="https://site/1", m=["Datas"], d="2026-01-03T00:00:00Z", f="Site")
+j = list(c.juntar([a, b2]).values())
+assert len(j) == 1 and j[0]["m"] == ["Datas", "Medina"] and j[0]["u"] == "https://site/1" and j[0]["d"].startswith("2026-01-02")
+# site próprio: mesmo título na mesma cidade junta; em cidades diferentes fica separado
+p1 = dict(a, k="prefeitura", o="Medina")
+assert len(c.juntar([p1, dict(p1, u="u2")])) == 1
+assert len(c.juntar([p1, dict(p1, o="Datas")])) == 2
+# página institucional (mesmo título em 3+ sites) sai; em 2 fica
+fixa = [dict(p1, t="Portal da Transparência", o=o) for o in ("A", "B", "C")]
+assert c.sem_paginas_fixas(fixa) == [] and len(c.sem_paginas_fixas(fixa[:2])) == 2
+# eleição: resultado por cidade sim; notícia política e da câmara não
+E = lambda s: bool(c.ELEICAO.search(c.norm(s)))
+assert E("336ª zona eleitoral de Turmalina (MG): votos por local de votação no 2º turno")
+assert E("Em Leme do Prado (MG), Lula vence com 69,49% dos votos")
+assert E("Lula vence a eleição presidencial em Comercinho (MG)")
+assert not E("Lula deve voltar a Minas na próxima semana e mira Vale do Jequitinhonha")
+assert not E("Cidades do Vale lideram ranking de abstenção")
+assert c.NORMA_APROVADA.match(c.norm("Lei Ordinária-PMI nº 3.128")) and not c.NORMA_APROVADA.match(c.norm("Portaria-CMA nº 39"))
+assert c.NORMA_APROVADA.match(c.norm("Decreto Legislativo nº 2")) and not c.NORMA_APROVADA.match(c.norm("Decreto nº 5"))
+# sitemap: só página de notícia, não a listagem nem páginas institucionais
+assert c.NOTICIA_URL.search("https://x.mg.gov.br/noticia/detalhe/1713")
+assert c.NOTICIA_URL.search("https://x.mg.gov.br/noticias/campeonato-2026")
+assert not c.NOTICIA_URL.search("https://x.mg.gov.br/noticia") and not c.NOTICIA_URL.search("https://x.mg.gov.br/noticias")
+assert not c.NOTICIA_URL.search("https://x.mg.gov.br/licitacoes")
+assert c.meta('<meta property="og:title" content="A &amp; B - Prefeitura de X">', "og:title") == "A & B - Prefeitura de X"
+# aba Câmaras
+L = lambda t, k="camara", a=False, e=False: c.legislativo({"t": t, "k": k, "a": a, "e": e})
+assert L("Câmara aprova LDO 2027", a=True) == "aprovado"
+assert L("Projeto de Lei nº 047-2026") == "projeto" and L("REUNIÃO ORDINÁRIA, DIA 31 DE OUTUBRO") == "sessao"
+assert L("3º REUNIÃO EXTRA- ORDINÁRIA") == "sessao" and L("DIA DOS PAIS - 2026") == "outro"
+assert L("Portaria-CMA nº 39: posse de servidor", "lei") == "norma"
+assert L("Vereador defende democracia em Capelinha", "imprensa") == "outro" and L("Chuva em Almenara", "imprensa") is None
+assert L("CÂMARA Municipal, 213ª zona eleitoral", "imprensa", e=True) is None
+assert L("Prefeito sanciona lei do piso", "prefeitura", a=True) == "aprovado" and L("Vacinação", "prefeitura") is None
+print("ok")

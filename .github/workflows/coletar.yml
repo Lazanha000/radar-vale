@@ -1,0 +1,44 @@
+name: Coletar e publicar
+
+on:
+  schedule:
+    - cron: "17 3,9,15,21 * * *"  # 00h17, 06h17, 12h17 e 18h17 em Brasília (o cron do GitHub é UTC)
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install defusedxml
+      - run: python test_coletor.py
+      - run: python coletor.py --dias 3
+      - name: Guardar as notícias no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add painel/noticias.js
+          git commit -m "Coleta automática" || echo "nada novo"
+          git push
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: painel
+      - id: deploy
+        uses: actions/deploy-pages@v4
