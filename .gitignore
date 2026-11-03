@@ -4,3 +4,4 @@ __pycache__/
 android/out/
 android/*.apk
 android/radar.keystore
+android/*.idsig
