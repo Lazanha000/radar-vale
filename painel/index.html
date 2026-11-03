@@ -55,6 +55,20 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 .barra button{padding:6px 12px;font-size:.85rem;flex-shrink:0}
 .novo{background:#2f7d4f;color:#fff}
 :focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+#mais-filtros{grid-column:1/-1}
+#mais-filtros .filtros{margin:0}
+#mais-filtros summary{display:none}
+/* celular: filtros recolhidos atrás de um botão e abas fixas no topo */
+@media (max-width:600px){
+  main{padding:0 12px 16px}
+  h1{font-size:1.25rem;margin-top:12px}
+  .abas{position:sticky;top:0;z-index:2;background:var(--bg);margin:0 -12px 12px;padding:0 12px}
+  .abas button{flex:1;padding:12px 4px}
+  #mais-filtros summary{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);cursor:pointer;font-weight:600}
+  #mais-filtros[open] summary{margin-bottom:8px}
+  #mais-filtros .filtros{grid-template-columns:1fr}
+  article{padding:12px 12px 10px}
+}
 </style>
 </head>
 <body data-aba="noticias">
@@ -68,6 +82,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 </nav>
 <div class="filtros nao-fontes">
   <input type="search" id="q" aria-label="Buscar" placeholder='Buscar (ex.: escola, "saúde mental")'>
+  <details id="mais-filtros"><summary id="resumo-filtros">Filtros</summary><div class="filtros">
   <select id="mun" aria-label="Cidade"><option value="">Todas as cidades</option></select>
   <select id="tipo" class="so-noticias" aria-label="Fonte">
     <option value="">Todas as fontes</option>
@@ -86,6 +101,7 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
     <label class="chk" title="Resultados de votação por cidade (G1, UOL)"><input type="checkbox" id="el"> Mostrar eleições</label>
     <label class="chk" title="Esconde notícias em que a cidade não aparece no título nem no resumo (o Google achou só no texto)"><input type="checkbox" id="cf"> Só cidade no título</label>
   </div>
+  </div></details>
 </div>
 <div class="cats so-camaras" id="cats"></div>
 <section class="ranking so-camaras">
@@ -130,6 +146,8 @@ function filtrar() {
   const q = termos($('q').value), mun = $('mun').value;
   const dias = +$('per').value, corte = dias ? Date.now() - dias * 864e5 : 0;
   const ass = $('ass').value;
+  const ativos = ['mun', 'tipo', 'ass'].filter(id => $(id).value).length + (dias ? 1 : 0) + ['ap', 'el', 'cf'].filter(id => $(id).checked).length;
+  $('resumo-filtros').textContent = ativos ? `Filtros (${ativos} ${ativos > 1 ? 'ativos' : 'ativo'})` : 'Filtros';
   const base = i => Date.parse(i.d) >= corte && q.every(w => i._n.includes(w)) && (!ass || (i.as || []).includes(ass));
   const daCidade = i => !mun || i.m.includes(mun);
   if (aba === 'camaras') {
@@ -273,6 +291,7 @@ $('aba-noticias').onclick = () => mudarAba('noticias');
 $('aba-camaras').onclick = () => mudarAba('camaras');
 $('aba-fontes').onclick = () => mudarAba('fontes');
 $('mais').onclick = () => { mostrando += 100; desenhar(); };
+$('mais-filtros').open = !matchMedia('(max-width:600px)').matches;
 const salvos = guardado('radar-filtros') || {};
 for (const id of CAMPOS) {
   if (id in salvos) $(id)[$(id).type === 'checkbox' ? 'checked' : 'value'] = salvos[id];
