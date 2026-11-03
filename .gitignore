@@ -1,3 +1,6 @@
 coletor.log
 __pycache__/
 .claude/
+android/out/
+android/*.apk
+android/radar.keystore
