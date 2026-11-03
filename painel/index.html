@@ -55,6 +55,15 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 .barra button{padding:6px 12px;font-size:.85rem;flex-shrink:0}
 .novo{background:#2f7d4f;color:#fff}
 :focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.topo{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:8px}
+.topo button{flex-shrink:0;background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.topo button:disabled{opacity:.6;cursor:wait}
+.estado{margin:0 0 12px;font-weight:600}
+.estado:empty{display:none}
+.caixa{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px;display:grid;gap:8px}
+.caixa[hidden]{display:none}
+.caixa p,.caixa ol{margin:0}
+.caixa a{color:var(--ac)}
 #mais-filtros{grid-column:1/-1}
 #mais-filtros .filtros{margin:0}
 #mais-filtros summary{display:none}
@@ -73,8 +82,18 @@ footer{color:var(--mut);font-size:.8rem;margin-top:24px}
 </head>
 <body data-aba="noticias">
 <main>
-<h1>Radar do Vale</h1>
+<div class="topo"><h1>Radar do Vale</h1><button type="button" id="atualizar">Atualizar agora</button></div>
 <div class="sub" id="sub"></div>
+<p class="estado" id="estado" aria-live="polite"></p>
+<form class="caixa" id="caixa-token" hidden>
+  <p>Para buscar notícias na hora, o painel precisa de uma chave do GitHub. É só uma vez neste aparelho, e ela fica guardada só aqui.</p>
+  <ol>
+    <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Criar a chave no GitHub</a>. Em <b>Repository access</b>, escolha só <b>radar-vale</b>. Em <b>Permissions → Actions</b>, escolha <b>Read and write</b>.</li>
+    <li>Copie a chave e cole aqui:</li>
+  </ol>
+  <input type="password" id="token" autocomplete="off" aria-label="Chave do GitHub" required>
+  <button type="submit">Salvar e atualizar</button>
+</form>
 <nav class="abas" role="tablist">
   <button role="tab" id="aba-noticias" aria-selected="true">Notícias</button>
   <button role="tab" id="aba-camaras" aria-selected="false">Câmaras</button>
@@ -311,6 +330,48 @@ $('csv').onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
 };
+// "Atualizar agora": dispara a coleta na nuvem (GitHub Actions) com a chave que fica só neste aparelho
+const ACOES = 'https://api.github.com/repos/Lazanha000/radar-vale/actions/workflows/coletar.yml';
+const espera = ms => new Promise(ok => setTimeout(ok, ms));
+async function gh(caminho, opcoes) {
+  const r = await fetch(ACOES + caminho, {...opcoes, headers: {Authorization: 'Bearer ' + guardado('radar-token'), Accept: 'application/vnd.github+json'}});
+  if ([401, 403, 404].includes(r.status)) { guardar('radar-token', null); throw new Error('o GitHub recusou a chave. Toque de novo em "Atualizar agora" e cole uma nova.'); }
+  if (!r.ok) throw new Error(`o GitHub respondeu ${r.status}.`);
+  return r.status === 204 ? null : r.json();
+}
+const ultimaRodada = async () => (await gh('/runs?event=workflow_dispatch&per_page=1')).workflow_runs[0];
+$('atualizar').onclick = async () => {
+  if (!guardado('radar-token')) { $('caixa-token').hidden = false; return $('token').focus(); }
+  $('atualizar').disabled = true;
+  try {
+    const antes = (await ultimaRodada())?.id;
+    await gh('/dispatches', {method: 'POST', body: JSON.stringify({ref: 'main'})});
+    $('estado').textContent = 'Buscando notícias… leva uns 2 a 5 minutos. Pode continuar lendo.';
+    for (let volta = 0; ; volta++) {
+      if (volta > 60) throw new Error('a busca está demorando. Ela continua rodando; abra o painel de novo daqui a pouco.');
+      await espera(15000);
+      const run = await ultimaRodada();
+      if (run && run.id !== antes && run.status === 'completed') {
+        if (run.conclusion !== 'success') throw new Error('a busca falhou. Tente de novo mais tarde.');
+        break;
+      }
+    }
+    $('estado').textContent = 'Pronto! Carregando as notícias novas…';
+    await fetch('noticias.js', {cache: 'reload'});  // troca a cópia guardada pelo navegador antes de recarregar
+    location.reload();
+  } catch (e) {
+    $('estado').textContent = 'Não deu para atualizar: ' + e.message;
+    $('atualizar').disabled = false;
+  }
+};
+$('caixa-token').onsubmit = e => {
+  e.preventDefault();
+  guardar('radar-token', $('token').value.trim());
+  $('token').value = '';
+  $('caixa-token').hidden = true;
+  $('atualizar').click();
+};
+
 const f = R.fontes;
 $('rodape').textContent = `Fontes com resultado nesta coleta: ${f.com_itens} de ${f.total}. Detalhes na aba Fontes.`;
 mudarAba(ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'noticias');
